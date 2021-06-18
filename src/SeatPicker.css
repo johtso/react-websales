@@ -1,0 +1,41 @@
+.seat-picker {
+    display: table;
+    /* border-collapse: collapse; */
+    /* width: auto; */
+    background-color: #eee;
+    border: 1px solid #666666;
+    border-spacing: 5px;
+    /* cellspacing:poor IE support for  this */
+}
+
+.row {
+    display: table-row;
+    width: auto;
+    clear: both;
+}
+
+.seat {
+    float: left;
+    /* fix for  buggy browsers */
+    display: table-column;
+    line-height: 52px;
+    margin: 1px;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+}
+
+.seat:hover {
+    border-style: solid;
+    border-color: darkslateblue;
+    border-width: 1px;
+    margin: 0px
+}
+
+.seat.selected {
+    background-color: darkorange;
+}
+
+.seat.available {
+    background-color: #ccc;
+}
