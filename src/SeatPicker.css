@@ -1,35 +1,33 @@
 .seat-picker {
-    display: table;
-    /* border-collapse: collapse; */
-    /* width: auto; */
+    display: grid;
     background-color: #eee;
     border: 1px solid #666666;
     border-spacing: 5px;
-    /* cellspacing:poor IE support for  this */
-}
-
-.row {
-    display: table-row;
-    width: auto;
-    clear: both;
+    color: saddlebrown;
 }
 
 .seat {
-    float: left;
-    /* fix for  buggy browsers */
-    display: table-column;
     line-height: 52px;
     margin: 1px;
     width: 50px;
     height: 50px;
+}
+
+.seat:not(.unavailable) {
     cursor: pointer;
 }
 
-.seat:hover {
+.seat:not(.unavailable):hover {
     border-style: solid;
-    border-color: darkslateblue;
-    border-width: 1px;
-    margin: 0px
+    border-color: purple;
+}
+
+.seat.separated {
+    margin-left: 10px;
+}
+
+.seat.unavailable {
+    background-color: grey;
 }
 
 .seat.selected {
@@ -37,5 +35,5 @@
 }
 
 .seat.available {
-    background-color: #ccc;
+    background-color: rgb(84, 173, 72);
 }

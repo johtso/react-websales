@@ -1,14 +1,35 @@
 import * as React from "react"
+import { enableMapSet } from "immer";
+import { useImmerReducer } from "use-immer";
 import './App.css';
 import './SeatPicker.css';
 import { dummySeats } from "./dummyData";
 
+enableMapSet()
 
-function* range(end: number) {
-    for (let value = 0; value < end; value += 1) {
-        yield value;
-    }
+// function* range(end: number) {
+//     for (let value = 0; value < end; value += 1) {
+//         yield value;
+//     }
+// }
+
+const groupedMap = <T,>(initialArray: T[], property: keyof T): Map<any, T[]> => {
+    return initialArray.reduce(
+        (entryMap, obj: T) => entryMap.set(obj[property], [...entryMap.get(obj[property]) || [], obj]),
+        new Map()
+    )
 }
+
+// function groupBy(objectArray: T[], property: string):  {
+//     return objectArray.reduce(function (acc, obj) {
+//         let key = obj[property]
+//         if (!acc[key]) {
+//             acc[key] = []
+//         }
+//         acc[key].push(obj)
+//         return acc
+//     }, {})
+// }
 
 // const clone = <T,>(items: T[][]): T[][] => items.map(item => Array.isArray(item) ? clone(item) : item);
 const copyTwoDimensionalArray = <T,>(items: T[][]): T[][] => items.map(item => item.slice());
@@ -29,6 +50,7 @@ const SeatTypeSelector = () => {
                         <input
                             type="number"
                             value={count}
+                            min="0"
                             onChange={
                                 (e) => setTicketCounts(
                                     (prevCounts) => Object.assign({}, prevCounts, {[type]: +e.target.value})
@@ -42,92 +64,108 @@ const SeatTypeSelector = () => {
     );
 }
 
-type SeatState = "SELECTED" | "AVAILABLE"
+type SeatStatus = "SELECTED" | "AVAILABLE" | "UNAVAILABLE" | "DISTANCING"
 
 type SeatProps = {
-    state: SeatState
+    status: SeatStatus
     onClick: () => void
+    separatedFromPrevious: boolean
 }
 
-const Seat = ({ state, onClick }: SeatProps) => {
+const Seat = ({ status, onClick, separatedFromPrevious }: SeatProps) => {
     return (
-        <div
-            className={ ["seat", state.toLowerCase()].join(" ") }
-            onClick={onClick}
+        <button
+            className={
+                [
+                    "seat",
+                    status.toLowerCase(),
+                    separatedFromPrevious ? "separated" : ""
+                ].join(" ")
+            }
+            onClick={ status == "UNAVAILABLE" ? () => {} : onClick}
         >
             S
-        </div>
+        </button>
     )
 }
 
 
-// const calculateSeatStates = (seats, selectedSeats) => {
+// const calculateSeatStatuss = (seats, selectedSeats) => {
 
 // }
 
-type SeatType = [number, number]
-// type SeatType = {
-//     id: number;
-//     sectionId: number;
-//     columnId: number;
-//     rowId: number;
-//     rowLabel: string;
-//     columnLabel: string;
-// }
-
-const seatPickerStateReducer = (prevState: SeatState[][], action: SeatType) => {
-    console.log(prevState)
-    const seat = action
-    let newState = copyTwoDimensionalArray(prevState)
-
-    const prevSeatState = prevState[seat[0]][seat[1]]
-
-    newState[seat[0]][seat[1]] = ((prevSeatState === "AVAILABLE") ? "SELECTED" : "AVAILABLE")
-    console.log(newState)
-    return newState
+type SeatType = {
+    id: number
+    sectionId: number
+    columnId: number
+    rowId: number
+    rowLabel: string
+    columnLabel: string
+    available: boolean
+    endOfSection?: boolean
 }
 
-const SeatPicker = () => {
-    const width = 5;
-    const height = 5;
+type SeatPickerActionType =
+    | {type: "SERVER_REFRESH", seats: SeatType[]}
+    | {type: "SELECT_TOGGLE", seatId: SeatType["id"]}
 
-    const selectionLimit = 3
-    // const [selected, setSelected] = React.useState(new Set())
-    //<Set<SeatType[]>>
+type SeatPickerStateType = {
+    seats: SeatType[]
+    selected: Set<SeatType["id"]>
+    seatStatuses: Map<SeatType["id"], SeatStatus>
+    totalSeats: number
+}
 
-    const initialState: SeatState[][] = []
-    for (const row of range(height)) {
-        let row: SeatState[] = []
-        for (const col of range(width)) {
-            row.push("AVAILABLE")
-        }
-        initialState.push(row)
+// TODO: change total seats action
+// work out how to pass total seat changes to seat picker state
+//
+
+const seatPickerStateReducer = (draft: SeatPickerStateType, action: SeatPickerActionType) => {
+    switch (action.type) {
+        case "SELECT_TOGGLE":
+            if (draft.selected.has(action.seatId)) {
+                draft.selected.delete(action.seatId)
+            } else {
+                draft.selected.add(action.seatId)
+            }
+
+            const selections = draft.selected.values()
+            while (draft.selected.size > draft.totalSeats) {
+                draft.selected.delete(selections.next().value)
+            }
     }
-
-    const [seatStates, dispatch] = React.useReducer(seatPickerStateReducer, initialState)
-
-    // const toggleSeat = (seat) => {
-    //     setSelected((prevSelected) =>
-    //         let newSelected = []
-    //         for (const seat of prevSelected) {
-    //             newSelected.push()
-    //         }
-    //     )
-    // }
-
-    // const isSelected = (seat) => selected.includes(seat)
+}
 
 
+const SeatPicker = ({ totalSeats }: {totalSeats: number}) => {
+    const initialState: SeatPickerStateType = {
+        seats: dummySeats,
+        selected: new Set(),
+        seatStatuses: new Map(),
+        totalSeats: totalSeats,
+    }
+    const [state, dispatch] = useImmerReducer<SeatPickerStateType>(seatPickerStateReducer, initialState)
+
+    const seatsByRow = groupedMap(state.seats, "rowId")
+
+    const selectedSeats = (): string[] => {
+        return Array.from(state.selected, (seatId) => {
+            const seat = state.seats[seatId]
+            return `${seat.rowLabel}${seat.columnLabel}`
+        }).sort()
+    }
 
     return (
         <div className="seat-picker">
-            {[...Array(height)].map((x, row) =>
-                <div className="row" key={row}>
-                    {[...Array(width)].map((x, col) =>
+            <span className="selected-seats">{ selectedSeats().join(", ") }</span>
+            {Array.from(seatsByRow, ([rowId, rowSeats]) =>
+                <div className="row" key={ `row-${rowId}` }>
+                    {rowSeats.map((seat, i) =>
                         <Seat
-                            key={ `${row}-${col}` }
-                            state={ seatStates[col][row] }
-                            onClick={ () => dispatch([col, row]) }
+                            key={ `seat-${seat.id}` }
+                            status={ state.selected.has(seat.id) ? "SELECTED" : (seat.available ? "AVAILABLE" : "UNAVAILABLE") }
+                            onClick={ () => dispatch({type: "SELECT_TOGGLE", seatId: seat.id}) }
+                            separatedFromPrevious={ i !== 0 && seat.sectionId !== rowSeats[i-1].sectionId }
                         />
                     )}
                 </div>
@@ -142,7 +180,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <SeatTypeSelector />
-        <SeatPicker />
+        <SeatPicker totalSeats={3} />
       </header>
     </div>
   );
