@@ -1,5 +1,5 @@
 import * as React from "react"
-import { reduce, map, groupBy } from "iter-tools";
+import { reduce, map } from "iter-tools";
 import { enableMapSet } from "immer";
 import { useImmerReducer } from "use-immer";
 import './App.css';
@@ -8,6 +8,12 @@ import { dummySeats } from "./dummyData";
 
 enableMapSet()
 
+const groupedMap = <T, U extends keyof T, V extends T[U]>(initialArray: T[], property: U): Map<V, T[]> => {
+    return initialArray.reduce(
+        (resultMap, obj: T) => resultMap.set(obj[property], [...resultMap.get(obj[property]) || [], obj]),
+        new Map()
+    )
+}
 
 const sum = (numbers: Iterable<number>): number => reduce(0, (result, value) => result + value, numbers)
 
@@ -141,7 +147,7 @@ const makeSeatPlan = (seats: SeatSelectionStateType["seats"], selected: SeatSele
         return selected.has(seat.id) ? "SELECTED" : (seat.available ? "AVAILABLE" : "UNAVAILABLE")
     }
 
-    const seatsByRow = groupBy((seat) => { seat.rowId }, seats)
+    const seatsByRow = groupedMap(seats, "rowId")
     return Array.from(seatsByRow.values(), (rowSeats) => {
         const seatsBySection = groupedMap(rowSeats, "sectionId")
         return Array.from(seatsBySection.values(), (sectionSeats) => {
