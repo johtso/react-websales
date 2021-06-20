@@ -1,12 +1,14 @@
 import * as React from "react"
 import { reduce, map } from "iter-tools";
-import { enableMapSet } from "immer";
-import { useImmerReducer } from "use-immer";
+import { enableMapSet, produce } from "immer";
 import './App.css';
 import './SeatPicker.css';
 import { dummySeats } from "./dummyData";
 
 enableMapSet()
+
+const seatingPlan = dummySeats
+
 
 const groupedMap = <T, U extends keyof T, V extends T[U]>(initialArray: T[], property: U): Map<V, T[]> => {
     return initialArray.reduce(
@@ -14,6 +16,8 @@ const groupedMap = <T, U extends keyof T, V extends T[U]>(initialArray: T[], pro
         new Map()
     )
 }
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const sum = (numbers: Iterable<number>): number => reduce(0, (result, value) => result + value, numbers)
 
@@ -46,23 +50,22 @@ const SeatTypeSelector = ({ticketCounts, setTicketCount}: SeatTypeSelectorProps)
 
 type SeatStatus = "SELECTED" | "AVAILABLE" | "UNAVAILABLE" | "DISTANCING"
 
-type SeatProps = {
-    status: SeatStatus
-    onClick: () => void
-    separatedFromPrevious: boolean
-}
 
-const Seat = ({ status, onClick, separatedFromPrevious }: SeatProps) => {
+const Seat = (props: {
+        status: SeatStatus
+        handleSeatToggle: () => void
+        separatedFromPrevious: boolean
+    }) => {
     return (
         <button
             className={
                 [
                     "seat",
-                    status.toLowerCase(),
-                    separatedFromPrevious ? "separated" : ""
+                    props.status.toLowerCase(),
+                    props.separatedFromPrevious ? "separated" : "",
                 ].join(" ")
             }
-            onClick={ status === "UNAVAILABLE" ? () => {} : onClick}
+            onClick={ props.status === "UNAVAILABLE" ? () => {} : props.handleSeatToggle }
         >
             S
         </button>
@@ -76,8 +79,6 @@ type SeatType = {
     rowId: number
     rowLabel: string
     columnLabel: string
-    available: boolean
-    endOfSection?: boolean
 }
 
 type SeatPickerActionType =
@@ -86,7 +87,9 @@ type SeatPickerActionType =
     | {type: "SET_TICKET_COUNT", ticketType: TicketTypeType, count: number}
 
 
-const seatSelectionStateReducer = (draft: SeatSelectionStateType, action: SeatPickerActionType) => {
+const seatSelectionStateReducer = produce((draft: SeatSelectionStateType, action: SeatPickerActionType) => {
+    const totalTickets = () => sum(draft.ticketTypes.values())
+
     switch (action.type) {
         case "SELECT_TOGGLE":
             if (draft.selected.has(action.seatId)) {
@@ -95,15 +98,12 @@ const seatSelectionStateReducer = (draft: SeatSelectionStateType, action: SeatPi
                 draft.selected.add(action.seatId)
             }
 
-            let totalTickets = sum(draft.ticketTypes.values())
-
-            if ((totalTickets === 0) && (draft.selected.size === 1)) {
+            if ((totalTickets() === 0) && (draft.selected.size === 1)) {
                 draft.ticketTypes.set("STANDARD", 1)
             }
 
-            totalTickets = sum(draft.ticketTypes.values())
             const selections = draft.selected.values()
-            while (draft.selected.size > totalTickets) {
+            while (draft.selected.size > totalTickets()) {
                 draft.selected.delete(selections.next().value)
             }
             break
@@ -111,25 +111,25 @@ const seatSelectionStateReducer = (draft: SeatSelectionStateType, action: SeatPi
             draft.ticketTypes.set(action.ticketType, action.count)
             break
     }
-}
 
-type SeatPickerProps = {
-    seatPlan: SeatPlanType
-    handleSeatSelect: (seatId: SeatType["id"]) => void
-}
+    draft.validSelection = (draft.selected.size > 0) && (totalTickets() === draft.selected.size)
+})
 
-const SeatPicker = ({ seatPlan, handleSeatSelect }: SeatPickerProps) => {
+const SeatPicker = (props: {
+        seatPlan: SeatPlanType
+        handleSeatToggle: (seatId: SeatType["id"]) => void
+    }) => {
 
     return (
         <div className="seat-picker">
-            {seatPlan.map((rowSeats, rowIndex) =>
+            {props.seatPlan.map((rowSeats, rowIndex) =>
                 <div className="row" key={ `row-${rowIndex}` }>
                     {rowSeats.map((sectionSeats, sectionIndex) =>
                         sectionSeats.map((seat, seatIndex) =>
                             <Seat
                                 key={ `seat-${seat.id}` }
                                 status={ seat.status }
-                                onClick={ () => handleSeatSelect(seat.id) }
+                                handleSeatToggle={ () => props.handleSeatToggle(seat.id) }
                                 separatedFromPrevious={ seatIndex === 0 && sectionIndex !== 0 }
                             />
                         )
@@ -142,9 +142,13 @@ const SeatPicker = ({ seatPlan, handleSeatSelect }: SeatPickerProps) => {
 
 type SeatPlanType =  {id: SeatType["id"], status: SeatStatus}[][][]
 
-const makeSeatPlan = (seats: SeatSelectionStateType["seats"], selected: SeatSelectionStateType["selected"]): SeatPlanType => {
+const makeSeatPlan = (
+        seats: SeatType[],
+        selected: SeatSelectionStateType["selected"],
+        unavailable: SeatSelectionStateType["unavailable"],
+    ): SeatPlanType => {
     const seatStatus = (seat: SeatType) => {
-        return selected.has(seat.id) ? "SELECTED" : (seat.available ? "AVAILABLE" : "UNAVAILABLE")
+        return selected.has(seat.id) ? "SELECTED" : (!unavailable.has(seat.id) ? "AVAILABLE" : "UNAVAILABLE")
     }
 
     const seatsByRow = groupedMap(seats, "rowId")
@@ -163,31 +167,32 @@ const makeSeatPlan = (seats: SeatSelectionStateType["seats"], selected: SeatSele
 
 
 type SeatSelectionStateType = {
-    seats: SeatType[]
     selected: Set<SeatType["id"]>
-    seatStatuses: Map<SeatType["id"], SeatStatus>
+    unavailable: Set<SeatType["id"]>
     ticketTypes: Map<TicketTypeType, number>
-    error: string
+    validSelection: boolean
 }
 
-function SeatSelection() {
-    const initialState: SeatSelectionStateType = {
-        seats: dummySeats,
-        selected: new Set(),
-        seatStatuses: new Map(),
-        ticketTypes: new Map(map((ticketType) => [ticketType, 0], TICKET_TYPES)),
-        error: "",
-    }
-    const [state, dispatch] = useImmerReducer<SeatSelectionStateType>(seatSelectionStateReducer, initialState)
+const initialSeatSelectionState: SeatSelectionStateType = {
+    selected: new Set(),
+    unavailable: new Set([5]),
+    ticketTypes: new Map(map((ticketType) => [ticketType, 0], TICKET_TYPES)),
+    validSelection: false,
+}
 
-    const handleSeatSelect = (seatId: SeatType["id"]) => dispatch({ type: "SELECT_TOGGLE", seatId: seatId })
+const SeatSelection = () => {
+    const [state, dispatch] = React.useReducer(seatSelectionStateReducer, initialSeatSelectionState)
+
+    const handleSeatToggle = (seatId: SeatType["id"]) => dispatch({ type: "SELECT_TOGGLE", seatId: seatId })
 
     const selectedSeats = Array.from(state.selected, (seatId) => {
-        const seat = state.seats[seatId]
+        const seat = seatingPlan[seatId]
         return `${seat.rowLabel}${seat.columnLabel}`
     }).sort()
 
-    const seatPlan = makeSeatPlan(state.seats, state.selected)
+    const handleSubmit = () => { console.log("submit") }
+
+    const fullSeatPlan = makeSeatPlan(seatingPlan, state.selected, state.unavailable)
     return (
         <div className="App">
         <header className="App-header">
@@ -201,9 +206,10 @@ function SeatSelection() {
                 ticketCounts={state.ticketTypes}
             />
             <SeatPicker
-                seatPlan={seatPlan}
-                handleSeatSelect={handleSeatSelect}
+                seatPlan={fullSeatPlan}
+                handleSeatToggle={handleSeatToggle}
             />
+            <button onClick={ handleSubmit } disabled={ !state.validSelection }>Submit</button>
         </header>
         </div>
     );

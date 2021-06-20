@@ -9005,6 +9005,11 @@ react-app-polyfill@^2.0.0:
     regenerator-runtime "^0.13.7"
     whatwg-fetch "^3.4.1"
 
+react-context-devtool@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/react-context-devtool/-/react-context-devtool-2.0.3.tgz#60d6d8669bc64e32e42069638e961acc8320d77a"
+  integrity sha512-GVpDaQqRsVoofcbViVWelWTUHNjk4CAA81ZU+TVjEwZUTjhwOgKDM4t6yGfLBoEEG8PFYKbp9QqzyWw2BASe5Q==
+
 react-dev-utils@^11.0.3:
   version "11.0.4"
   resolved "https://registry.yarnpkg.com/react-dev-utils/-/react-dev-utils-11.0.4.tgz#a7ccb60257a1ca2e0efe7a83e38e6700d17aa37a"
@@ -9227,6 +9232,13 @@ redent@^3.0.0:
     indent-string "^4.0.0"
     strip-indent "^3.0.0"
 
+redux@^4.0.5:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/redux/-/redux-4.1.0.tgz#eb049679f2f523c379f1aff345c8612f294c88d4"
+  integrity sha512-uI2dQN43zqLWCt6B/BMGRMY6db7TTY4qeHHfGeKb3EOhmOKjU3KdWvNLJyqaHRksv/ErdNH7cFZWg9jXtewy4g==
+  dependencies:
+    "@babel/runtime" "^7.9.2"
+
 regenerate-unicode-properties@^8.2.0:
   version "8.2.0"
   resolved "https://registry.yarnpkg.com/regenerate-unicode-properties/-/regenerate-unicode-properties-8.2.0.tgz#e5de7111d655e7ba60c057dbe9ff37c87e65cdec"
@@ -9305,6 +9317,13 @@ regjsparser@^0.6.4:
   integrity sha512-ib77G0uxsA2ovgiYbCVGx4Pv3PSttAx2vIwidqQzbL2U5S4Q+j00HdSAneSBuyVcMvEnTXMjiGgB+DlXozVhpQ==
   dependencies:
     jsesc "~0.5.0"
+
+reinspect@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/reinspect/-/reinspect-1.1.0.tgz#e2cabeaf7d79a1e0295b483db1ebf88032aa4c1a"
+  integrity sha512-sYDAENbErxleBaDYuODWY8imD/ILvPCau8HV9XoGKWquYTmRMP9HRr32u9EqqjFu3no1MULYByRy6yABj61/+w==
+  dependencies:
+    redux "^4.0.5"
 
 relateurl@^0.2.7:
   version "0.2.7"
