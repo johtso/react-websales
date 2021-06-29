@@ -1,39 +1,201 @@
+/* input[type="number"] {
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+}
+
+.number-input {
+    border: 2px solid #ddd;
+    display: inline-flex;
+}
+
+.number-input, .number-input * {
+    box-sizing: border-box;
+}
+
+.number-input button {
+    outline: none;
+    -webkit-appearance: none;
+    background-color: transparent;
+    border: none;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    cursor: pointer;
+    margin: 0;
+    position: relative;
+}
+
+.number-input button:after {
+    display: inline-block;
+    position: absolute;
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    content: '\f077';
+    transform: translate(-50%, -50%) rotate(180deg);
+    ;
+}
+
+.number-input button.plus:after {
+    transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.number-input input[type=number] {
+    font-family: sans-serif;
+    max-width: 5rem;
+    padding: .5rem;
+    border: solid #ddd;
+    border-width: 0 2px;
+    font-size: 2rem;
+    height: 3rem;
+    font-weight: bold;
+    text-align: center;
+} */
+
+.number-input input {
+  @apply h-10 w-10 text-black text-center;
+}
+
+/* .number-input input[type=number]::inner-spin-button,
+              input[type=number]::outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+} */
+
+.number-input input {
+  appearance: textfield;
+}
+
+.loader {
+  font-size: 10px;
+  position: relative;
+  text-indent: -9999em;
+  border-top: 1.1em solid rgba(255, 255, 255, 0.2);
+  border-right: 1.1em solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1.1em solid rgba(255, 255, 255, 0.2);
+  border-left: 1.1em solid #ffffff;
+  -webkit-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-animation: load8 1.1s infinite linear;
+  animation: load8 1.1s infinite linear;
+  border-radius: 50%;
+  /* width: 10em;
+    height: 10em; */
+}
+
+@-webkit-keyframes load8 {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes load8 {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
 .seat-picker {
-    display: grid;
-    background-color: #eee;
-    border: 1px solid #666666;
-    border-spacing: 5px;
-    color: saddlebrown;
+  position: relative;
+  background-color: #eee;
+  border: 1px solid #666666;
+  border-spacing: 5px;
+  color: saddlebrown;
+}
+
+.seat-picker.loading {
+  @apply animate-pulse;
+}
+
+.loading-overlay {
+  content: '';
+  z-index: 10;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  display: flex;
 }
 
 .seat {
-    line-height: 52px;
-    margin: 1px;
-    width: 50px;
-    height: 50px;
+  line-height: 52px;
+  margin: 1px;
+  width: 50px;
+  height: 50px;
+  @apply text-white;
 }
 
 .seat:not(.unavailable) {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .seat:not(.unavailable):hover {
-    border-style: solid;
-    border-color: purple;
+  border-style: solid;
+  border-color: purple;
 }
 
 .seat.separated {
-    margin-left: 10px;
+  margin-left: 10px;
 }
 
 .seat.unavailable {
-    background-color: grey;
+  background-color: grey;
 }
 
 .seat.selected {
-    background-color: darkorange;
+  background-color: darkorange;
 }
 
 .seat.available {
-    background-color: rgb(84, 173, 72);
+  background-color: rgb(84, 173, 72);
+}
+
+.my-button {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-white bg-blue-600 transition ease-in-out duration-150;
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  &:hover {
+    @apply bg-blue-500;
+  }
+
+  &:focus {
+    @apply border-blue-700;
+  }
+
+  &:active {
+    @apply bg-blue-700;
+  }
+
+  &:not(.busy) {
+    svg {
+      @apply hidden;
+    }
+  }
+
+  &.busy {
+    @apply cursor-wait;
+  }
 }
