@@ -2,13 +2,6 @@ import 'components/DigitInput.css';
 import * as React from 'react';
 import { InputPropsWithoutRef } from 'react-html-props';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function assertInstanceOf<C>(value: unknown, c: new (...args: any[]) => C): asserts value is C {
-  if (!(value instanceof c)) {
-    throw new Error(`Expected ${value} to be instance of ${c.name}`);
-  }
-}
-
 const Digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 type DigitType = typeof Digits[number];
 
@@ -71,8 +64,9 @@ const DigitInput = ({
         size={1}
         onChange={() => {}}
         onBeforeInput={(e) => {
-          assertInstanceOf(e.nativeEvent, KeyboardEvent);
-          handleInput(e.nativeEvent.key);
+          // assertInstanceOf(e.nativeEvent, KeyboardEvent);
+          const event = e as unknown as CompositionEvent;
+          handleInput(event.data);
           e.preventDefault();
         }}
         onClick={() => {
