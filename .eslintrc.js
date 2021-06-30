@@ -70,5 +70,6 @@ module.exports = {
       'error',
       { props: true, ignorePropertyModificationsFor: ['state', 'draft'] },
     ],
+    'no-console': 'off',
   },
 };
