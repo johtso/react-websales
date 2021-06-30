@@ -15,12 +15,28 @@ type SeatsStoreModel = {
   toggleSelection: Action<SeatsStoreModel, { seatId: number }>;
   setTicketCount: Action<SeatsStoreModel, { ticketType: types.TicketType; count: number }>;
   setUnavailable: Action<SeatsStoreModel, { unavailable: Set<types.SeatType['id']> }>;
+  // deselectExcessSeats: Action<SeatsStoreModel>;
   randomAvailabilityChange: Action<SeatsStoreModel>;
 
   // Computed
   isSelectionValid: Computed<SeatsStoreModel, boolean>;
   selectedSeats: Computed<SeatsStoreModel, string[]>;
   seatPlan: Computed<SeatsStoreModel, types.SeatPlanType>;
+};
+
+const deselectExcessSeats = (
+  ticketTypes: SeatsStoreModel['ticketTypes'],
+  selected: SeatsStoreModel['selected']
+) => {
+  /*
+    Deselect seats starting from least recently selected until equal to ticket quantities.
+  */
+  const totalTickets = sum(ticketTypes.values());
+  const selections = selected.values();
+
+  while (selected.size > totalTickets) {
+    selected.delete(selections.next().value);
+  }
 };
 
 const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
@@ -41,17 +57,14 @@ const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
     if (totalTickets === 0 && state.selected.size === 1) {
       state.ticketTypes.set('STANDARD', 1);
     } else {
-      // If we have more seats selected than ticket quantities, deselect seats
-      // starting from least recently selected until equal to ticket quantities.
-      const selections = state.selected.values();
-      while (state.selected.size > totalTickets) {
-        state.selected.delete(selections.next().value);
-      }
+      // If we have more seats selected than ticket quantities,
+      deselectExcessSeats(state.ticketTypes, state.selected);
     }
   }),
 
   setTicketCount: action((state, { ticketType, count }) => {
     state.ticketTypes.set(ticketType, count);
+    deselectExcessSeats(state.ticketTypes, state.selected);
   }),
 
   setUnavailable: action((state, { unavailable }) => {
