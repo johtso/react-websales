@@ -1,8 +1,9 @@
+import 'easy-peasy/map-set-support';
 import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
 import { debugContextDevtool } from 'react-context-devtool';
+import ReactDOM from 'react-dom';
 import App from './App';
+import './index.css';
 import reportWebVitals from './reportWebVitals';
 
 const container = document.getElementById('root');

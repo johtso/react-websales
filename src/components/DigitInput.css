@@ -1,0 +1,38 @@
+body {
+  background-color: black;
+}
+
+.DigitInput {
+  @apply text-black bg-white rounded-md inline-flex items-center justify-center overflow-hidden border-white;
+  input,
+  button {
+    @apply p-0 bg-transparent font-bold border-0 w-10 h-10 leading-4;
+
+    &:focus {
+      @apply outline-none;
+    }
+  }
+
+  input {
+    @apply text-center border focus:outline-none focus:ring focus:border-blue-400 z-10;
+  }
+
+  button {
+    @apply cursor-pointer text-xl w-10 border-gray-200;
+
+    &:hover {
+      @apply bg-gray-200;
+    }
+
+    &:disabled {
+      @apply bg-gray-200;
+    }
+
+    &:first-of-type {
+      @apply border-r-2;
+    }
+    &:last-of-type {
+      @apply border-l-2;
+    }
+  }
+}

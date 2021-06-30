@@ -1,76 +1,3 @@
-/* input[type="number"] {
-    -webkit-appearance: textfield;
-    -moz-appearance: textfield;
-    appearance: textfield;
-}
-
-input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-}
-
-.number-input {
-    border: 2px solid #ddd;
-    display: inline-flex;
-}
-
-.number-input, .number-input * {
-    box-sizing: border-box;
-}
-
-.number-input button {
-    outline: none;
-    -webkit-appearance: none;
-    background-color: transparent;
-    border: none;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    cursor: pointer;
-    margin: 0;
-    position: relative;
-}
-
-.number-input button:after {
-    display: inline-block;
-    position: absolute;
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    content: '\f077';
-    transform: translate(-50%, -50%) rotate(180deg);
-    ;
-}
-
-.number-input button.plus:after {
-    transform: translate(-50%, -50%) rotate(0deg);
-}
-
-.number-input input[type=number] {
-    font-family: sans-serif;
-    max-width: 5rem;
-    padding: .5rem;
-    border: solid #ddd;
-    border-width: 0 2px;
-    font-size: 2rem;
-    height: 3rem;
-    font-weight: bold;
-    text-align: center;
-} */
-
-.number-input input {
-  @apply h-10 w-10 text-black text-center;
-}
-
-/* .number-input input[type=number]::inner-spin-button,
-              input[type=number]::outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-} */
-
-.number-input input {
-  appearance: textfield;
-}
-
 .loader {
   font-size: 10px;
   position: relative;
@@ -111,12 +38,22 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
   }
 }
 
+.SeatTypeSelector {
+  @apply flex flex-col items-end;
+
+  .DigitInput {
+    @apply m-3;
+  }
+}
+
 .seat-picker {
   position: relative;
   background-color: #eee;
   border: 1px solid #666666;
   border-spacing: 5px;
   color: saddlebrown;
+
+  @apply m-3;
 }
 
 .seat-picker.loading {
@@ -168,34 +105,4 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 
 .seat.available {
   background-color: rgb(84, 173, 72);
-}
-
-.my-button {
-  @apply inline-flex items-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-white bg-blue-600 transition ease-in-out duration-150;
-
-  &:disabled {
-    @apply opacity-50 cursor-not-allowed;
-  }
-
-  &:hover {
-    @apply bg-blue-500;
-  }
-
-  &:focus {
-    @apply border-blue-700;
-  }
-
-  &:active {
-    @apply bg-blue-700;
-  }
-
-  &:not(.busy) {
-    svg {
-      @apply hidden;
-    }
-  }
-
-  &.busy {
-    @apply cursor-wait;
-  }
 }

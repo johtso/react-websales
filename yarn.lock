@@ -5858,11 +5858,6 @@ immer@^9.0.3:
   resolved "https://registry.npmjs.org/immer/-/immer-9.0.3.tgz"
   integrity sha512-mONgeNSMuyjIe0lkQPa9YhdmTv8P19IeHV0biYhcXhbd5dhdB9HSK93zBpyKjp6wersSUgT5QyU0skmejUVP2A==
 
-immutable@^4.0.0-rc.12:
-  version "4.0.0-rc.12"
-  resolved "https://registry.npmjs.org/immutable/-/immutable-4.0.0-rc.12.tgz"
-  integrity sha512-0M2XxkZLx/mi3t8NVwIm1g8nHoEmM9p9UBl/G9k4+hm0kBgOVdMV/B3CY5dQ8qG8qc80NN4gDV4HQv6FTJ5q7A==
-
 import-cwd@^2.0.0:
   version "2.1.0"
   resolved "https://registry.npmjs.org/import-cwd/-/import-cwd-2.1.0.tgz"
@@ -9114,6 +9109,11 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
+prettier-plugin-organize-imports@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-organize-imports/-/prettier-plugin-organize-imports-2.2.0.tgz#dcdd5222416a90bd819734f131fea4a22b1c613a"
+  integrity sha512-2WM3moc/cAPCCsSneYhaL4+mMws0Bypbxz+98wuRyaA7GMokhOECVkQCG7l2hcH+9/4d5NsgZs9yktfwDy4r7A==
+
 prettier@^2.3.0:
   version "2.3.1"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-2.3.1.tgz#76903c3f8c4449bc9ac597acefa24dc5ad4cbea6"
@@ -9424,7 +9424,7 @@ react-error-overlay@^6.0.9:
 
 react-html-props@^1.0.32:
   version "1.0.32"
-  resolved "https://registry.npmjs.org/react-html-props/-/react-html-props-1.0.32.tgz"
+  resolved "https://registry.yarnpkg.com/react-html-props/-/react-html-props-1.0.32.tgz#3bcd0ff09d582a5c304241a6ccb45a640b9d0769"
   integrity sha512-iXw0ojB4oz9Jer8fUfTB68Jh7WyXrMIA8PEfCStd7ukBU6ABVg7H0mJfo9fQywJV2TmyxQ+MoT8KxepkQCB1Ag==
 
 react-is@^16.8.1:
@@ -11367,11 +11367,6 @@ url@^0.11.0:
   dependencies:
     punycode "1.3.2"
     querystring "0.2.0"
-
-use-immer@^0.5.2:
-  version "0.5.2"
-  resolved "https://registry.npmjs.org/use-immer/-/use-immer-0.5.2.tgz"
-  integrity sha512-aHnLa85kftWo05lqJVOy3GLXrydqu6kl0MXvo5k5OW8IoLJixa9NY/48Xdy0LlcqdakBTFLbSDZaYVPMVhYy8Q==
 
 use@^3.1.0:
   version "3.1.1"

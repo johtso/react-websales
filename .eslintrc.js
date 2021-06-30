@@ -22,7 +22,7 @@ module.exports = {
   plugins: ['react', '@typescript-eslint', 'prettier'],
   rules: {
     'prettier/prettier': ['error', { singleQuote: true, semi: true, tabWidth: 2 }],
-    'max-len': 0,
+    'max-len': 'off',
     'no-restricted-syntax': [
       'error',
       {
@@ -54,6 +54,8 @@ module.exports = {
         exceptions: [],
       },
     ],
+    'react/require-default-props': 'off',
+    'react/react-in-jsx-scope': 'off',
     'jsx-a11y/label-has-associated-control': [
       'error',
       {
@@ -63,6 +65,7 @@ module.exports = {
         depth: 3,
       },
     ],
+    '@typescript-eslint/no-unused-vars': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
     'no-param-reassign': [
       'error',
       { props: true, ignorePropertyModificationsFor: ['state', 'draft'] },
