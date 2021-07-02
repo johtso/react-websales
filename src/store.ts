@@ -1,21 +1,19 @@
 import { action, Action, Computed, computed } from 'easy-peasy';
-import { map } from 'iter-tools';
-import * as _ from 'lodash-es';
+import { difference, groupBy, map, sampleSize, sum, values } from 'lodash-es';
 import * as types from 'types';
-import { difference, groupedMap, sum, toggleSetValue } from 'utils';
+import { pushOrPull } from 'utils';
 
 type SeatsStoreModel = {
   // State
   seats: types.SeatType[];
-  selected: Set<types.SeatType['id']>;
-  unavailable: Set<types.SeatType['id']>;
-  ticketTypes: Map<types.TicketType, number>;
+  selected: types.SeatType['id'][];
+  unavailable: types.SeatType['id'][];
+  ticketTypes: Record<types.TicketType, number>;
 
   // Actions
   toggleSelection: Action<SeatsStoreModel, { seatId: number }>;
   setTicketCount: Action<SeatsStoreModel, { ticketType: types.TicketType; count: number }>;
-  setUnavailable: Action<SeatsStoreModel, { unavailable: Set<types.SeatType['id']> }>;
-  // deselectExcessSeats: Action<SeatsStoreModel>;
+  setUnavailable: Action<SeatsStoreModel, { unavailable: types.SeatType['id'][] }>;
   randomAvailabilityChange: Action<SeatsStoreModel>;
 
   // Computed
@@ -31,31 +29,30 @@ const deselectExcessSeats = (
   /*
     Deselect seats starting from least recently selected until equal to ticket quantities.
   */
-  const totalTickets = sum(ticketTypes.values());
-  const selections = selected.values();
+  const totalTickets = sum(values(ticketTypes));
 
-  while (selected.size > totalTickets) {
-    selected.delete(selections.next().value);
+  while (selected.length > totalTickets) {
+    selected.shift();
   }
 };
 
 const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
   // State
   seats,
-  selected: new Set(),
-  unavailable: new Set(),
-  ticketTypes: new Map(map((ticketType) => [ticketType, 0], types.AllTicketTypes)),
+  selected: [],
+  unavailable: [],
+  ticketTypes: Object.fromEntries(map(types.AllTicketTypes, (ticketType) => [ticketType, 0])),
 
   // Actions
   toggleSelection: action((state, { seatId }) => {
-    const totalTickets = sum(state.ticketTypes.values());
+    const totalTickets = sum(values(state.ticketTypes));
 
-    toggleSetValue(state.selected, seatId);
+    pushOrPull(state.selected, seatId);
 
     // For first seat selection, if user has not set any ticket quantities
     // set standard ticket count to 1.
-    if (totalTickets === 0 && state.selected.size === 1) {
-      state.ticketTypes.set('STANDARD', 1);
+    if (totalTickets === 0 && state.selected.length === 1) {
+      state.ticketTypes.STANDARD = 1;
     } else {
       // If we have more seats selected than ticket quantities,
       deselectExcessSeats(state.ticketTypes, state.selected);
@@ -63,7 +60,7 @@ const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
   }),
 
   setTicketCount: action((state, { ticketType, count }) => {
-    state.ticketTypes.set(ticketType, count);
+    state.ticketTypes[ticketType] = count;
     deselectExcessSeats(state.ticketTypes, state.selected);
   }),
 
@@ -74,44 +71,44 @@ const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
 
   randomAvailabilityChange: action((state) => {
     const seatIds = state.seats.map((s) => s.id);
-    const oneId = _.sampleSize(seatIds, 1)[0];
-    toggleSetValue(state.unavailable, oneId);
+    const oneId = sampleSize(seatIds, 1)[0];
+    pushOrPull(state.unavailable, oneId);
   }),
 
   // Computed
   isSelectionValid: computed((state) => {
-    const totalTickets = sum(state.ticketTypes.values());
-    return state.selected.size > 0 && totalTickets === state.selected.size;
+    const totalTickets = sum(values(state.ticketTypes));
+    return state.selected.length > 0 && totalTickets === state.selected.length;
   }),
 
   selectedSeats: computed((state) =>
-    Array.from(state.selected, (seatId) => {
-      const seat = state.seats[seatId];
-      return `${seat.rowLabel}${seat.columnLabel}`;
-    }).sort()
+    state.selected
+      .map((seatId) => {
+        const seat = state.seats[seatId];
+        return `${seat.rowLabel}${seat.columnLabel}`;
+      })
+      .sort()
   ),
 
   seatPlan: computed((state) => {
     const seatStatus = (seat: types.SeatType): types.SeatStatus => {
       let status: types.SeatStatus;
-      if (state.selected.has(seat.id)) {
+      if (state.selected.includes(seat.id)) {
         status = 'SELECTED';
       } else {
-        status = state.unavailable.has(seat.id) ? 'UNAVAILABLE' : 'AVAILABLE';
+        status = state.unavailable.includes(seat.id) ? 'UNAVAILABLE' : 'AVAILABLE';
       }
       return status;
     };
 
-    const seatsByRow = groupedMap(state.seats, 'rowId');
-    return Array.from(seatsByRow.values(), (rowSeats) => {
-      const seatsBySection = groupedMap(rowSeats, 'sectionId');
-      return Array.from(seatsBySection.values(), (sectionSeats) =>
-        Array.from(sectionSeats, (seat) => ({
+    return map(groupBy(state.seats, 'rowId'), (rowSeats) =>
+      map(groupBy(rowSeats, 'sectionId'), (sectionSeats) =>
+        sectionSeats.map((seat) => ({
           id: seat.id,
           status: seatStatus(seat),
         }))
-      );
-    });
+      )
+    );
   }),
 });
 

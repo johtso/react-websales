@@ -2,6 +2,7 @@
   "name": "react-websales",
   "version": "0.1.0",
   "private": true,
+  "sideEffects": false,
   "dependencies": {
     "@craco/craco": "^6.1.2",
     "@testing-library/jest-dom": "^5.11.4",
@@ -39,7 +40,8 @@
     "start": "craco start",
     "build": "craco build",
     "test": "craco test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "analyze": "npx cra-bundle-analyzer"
   },
   "eslintConfig": {
     "extends": [
@@ -61,6 +63,9 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^4.28.0",
     "@typescript-eslint/parser": "^4.28.0",
+    "babel-plugin-lodash": "^3.3.4",
+    "chalk": "^4.1.1",
+    "cra-bundle-analyzer": "^0.1.0",
     "eslint": "^7.2.0",
     "eslint-config-airbnb": "^18.2.1",
     "eslint-config-prettier": "^8.3.0",
@@ -69,6 +74,9 @@
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-react": "^7.21.5",
     "eslint-plugin-react-hooks": "^4",
-    "prettier": "^2.3.0"
+    "prettier": "^2.3.0",
+    "source-map-explorer": "^2.5.2",
+    "webpack-bundle-analyzer": "^4.4.2",
+    "webpack-cli": "^4.7.2"
   }
 }

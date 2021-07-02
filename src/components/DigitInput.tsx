@@ -1,5 +1,5 @@
 import 'components/DigitInput.css';
-import * as React from 'react';
+import { createRef, useEffect } from 'react';
 import { InputPropsWithoutRef } from 'react-html-props';
 
 const Digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -17,7 +17,7 @@ const DigitInput = ({
   canIncrement?: boolean;
   canDecrement?: boolean;
 } & InputPropsWithoutRef): JSX.Element => {
-  const inputRef = React.createRef<HTMLInputElement>();
+  const inputRef = createRef<HTMLInputElement>();
 
   const forceToSingleDigit = (s: string): DigitType => {
     if (s.length === 0) {
@@ -39,7 +39,7 @@ const DigitInput = ({
 
   const handleAdjust = (amount: number): void => handleChange(count + amount);
 
-  React.useEffect(() => {
+  useEffect(() => {
     forceSelectAll();
   });
 

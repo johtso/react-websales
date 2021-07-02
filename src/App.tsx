@@ -1,9 +1,8 @@
 import ActionButton from 'components/ActionButton';
 import DigitInput from 'components/DigitInput';
 import { useLocalStore } from 'easy-peasy';
-import { map } from 'iter-tools';
-import * as _ from 'lodash-es';
-import * as React from 'react';
+import { map, random, sampleSize } from 'lodash-es';
+import { useEffect, useState } from 'react';
 import makeSeatsStore from 'store';
 import { sleep } from 'utils';
 import './App.css';
@@ -18,31 +17,21 @@ const SeatTypeSelector = ({
   ticketCounts,
   setTicketCount,
 }: {
-  ticketCounts: Map<types.TicketType, number>;
+  ticketCounts: Record<types.TicketType, number>;
   setTicketCount: (payload: { ticketType: types.TicketType; count: number }) => void;
 }) => (
-  <form
-    className="SeatTypeSelector"
-    onSubmit={(e) => {
-      e.preventDefault();
-    }}
-  >
-    {[
-      ...map(
-        ([type, count]) => (
-          <div className="seat-type-row" key={type}>
-            <label htmlFor={type}>{type}</label>
-            <DigitInput
-              name={type}
-              count={count}
-              handleChange={(newCount) => setTicketCount({ ticketType: type, count: newCount })}
-            />
-          </div>
-        ),
-        ticketCounts.entries()
-      ),
-    ]}
-  </form>
+  <div className="SeatTypeSelector">
+    {map(ticketCounts, (count, ticketType) => (
+      <div className="seat-type-row" key={ticketType}>
+        <label htmlFor={ticketType}>{ticketType}</label>
+        <DigitInput
+          name={ticketType}
+          count={count}
+          handleChange={(newCount) => setTicketCount({ ticketType, count: newCount })}
+        />
+      </div>
+    ))}
+  </div>
 );
 
 const Seat = ({
@@ -97,19 +86,19 @@ const SeatPicker = ({
 );
 
 const fetchSeatData = () =>
-  new Promise((resolve: (value: Set<types.SeatType['id']>) => void) => {
+  new Promise((resolve: (value: types.SeatType['id'][]) => void) => {
     const seatIds = seatingPlan.map((s) => s.id);
-    const unavailable = new Set(_.sampleSize(seatIds, _.random(1, Math.round(seatIds.length / 2))));
+    const unavailable = sampleSize(seatIds, random(1, Math.round(seatIds.length / 2)));
     sleep(3000).then(() => resolve(unavailable));
   });
 
 const SeatSelection = (): JSX.Element => {
   const [state, actions] = useLocalStore(() => makeSeatsStore(seatingPlan));
 
-  const [loadingState, setLoadingState] = React.useState(true);
-  const [submittingState, setSubmittingState] = React.useState(false);
+  const [loadingState, setLoadingState] = useState(true);
+  const [submittingState, setSubmittingState] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const continuouslyUpdateAvailability = () => {
       actions.randomAvailabilityChange();
       sleep(10000).then(() => continuouslyUpdateAvailability());

@@ -1,4 +1,5 @@
 import { reduce } from 'iter-tools';
+import { pull } from 'lodash-es';
 
 // *** Arrays ***
 
@@ -14,6 +15,14 @@ const groupedMap = <T, U extends keyof T, V extends T[U]>(
 
 const sum = (numbers: Iterable<number>): number =>
   reduce(0, (result, value) => result + value, numbers);
+
+const pushOrPull = <T>(array: T[], value: T): void => {
+  if (array.includes(value)) {
+    pull(array, value);
+  } else {
+    array.push(value);
+  }
+};
 
 // *** Sets ***
 
@@ -41,4 +50,4 @@ const toggleSetValue = <T>(set: Set<T>, value: T): void => {
 const sleep = (ms: number): Promise<() => unknown> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-export { groupedMap, sleep, sum, difference, toggleSetValue };
+export { groupedMap, pushOrPull, sleep, sum, difference, toggleSetValue };

@@ -1,5 +1,5 @@
 import 'easy-peasy/map-set-support';
-import React from 'react';
+import { StrictMode } from 'react';
 import { debugContextDevtool } from 'react-context-devtool';
 import ReactDOM from 'react-dom';
 import App from './App';
@@ -8,9 +8,9 @@ import './index.css';
 const container = document.getElementById('root');
 
 ReactDOM.render(
-  <React.StrictMode>
+  <StrictMode>
     <App />
-  </React.StrictMode>,
+  </StrictMode>,
   container
 );
 
