@@ -46,9 +46,9 @@ const Seat = ({
   <button
     type="button"
     className={['seat', status.toLowerCase(), separatedFromPrevious ? 'separated' : ''].join(' ')}
-    onClick={status === 'UNAVAILABLE' ? () => {} : handleSeatToggle}
+    onClick={['AVAILABLE', 'SELECTED'].includes(status) ? handleSeatToggle : () => {}}
   >
-    S
+    {{ DISTANCING: '<->', AVAILABLE: 'A', UNAVAILABLE: 'U', SELECTED: 'S' }[status]}
   </button>
 );
 

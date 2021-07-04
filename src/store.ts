@@ -1,5 +1,5 @@
-import { action, Action, Computed, computed } from 'easy-peasy';
-import { difference, groupBy, map, sampleSize, sum, values } from 'lodash-es';
+import { action, Action, Computed, computed, State } from 'easy-peasy';
+import { compact, difference, groupBy, map, sampleSize, some, sum, values } from 'lodash-es';
 import * as types from 'types';
 import { pushOrPull } from 'utils';
 
@@ -22,18 +22,19 @@ type SeatsStoreModel = {
   seatPlan: Computed<SeatsStoreModel, types.SeatPlanType>;
 };
 
-const deselectExcessSeats = (
-  ticketTypes: SeatsStoreModel['ticketTypes'],
-  selected: SeatsStoreModel['selected']
-) => {
+const deselectExcessSeats = (state: State<SeatsStoreModel>) => {
   /*
     Deselect seats starting from least recently selected until equal to ticket quantities.
   */
-  const totalTickets = sum(values(ticketTypes));
+  const totalTickets = sum(values(state.ticketTypes));
 
-  while (selected.length > totalTickets) {
-    selected.shift();
+  while (state.selected.length > totalTickets) {
+    state.selected.shift();
   }
+};
+
+const deselectUnavailableSeats = (state: State<SeatsStoreModel>) => {
+  state.selected = difference(state.selected, state.unavailable);
 };
 
 const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
@@ -55,24 +56,25 @@ const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
       state.ticketTypes.STANDARD = 1;
     } else {
       // If we have more seats selected than ticket quantities,
-      deselectExcessSeats(state.ticketTypes, state.selected);
+      deselectExcessSeats(state);
     }
   }),
 
   setTicketCount: action((state, { ticketType, count }) => {
     state.ticketTypes[ticketType] = count;
-    deselectExcessSeats(state.ticketTypes, state.selected);
+    deselectExcessSeats(state);
   }),
 
   setUnavailable: action((state, { unavailable }) => {
     state.unavailable = unavailable;
-    state.selected = difference(state.selected, state.unavailable);
+    deselectUnavailableSeats(state);
   }),
 
   randomAvailabilityChange: action((state) => {
     const seatIds = state.seats.map((s) => s.id);
     const oneId = sampleSize(seatIds, 1)[0];
     pushOrPull(state.unavailable, oneId);
+    deselectUnavailableSeats(state);
   }),
 
   // Computed
@@ -103,10 +105,23 @@ const makeSeatsStore = (seats: types.SeatType[]): SeatsStoreModel => ({
 
     return map(groupBy(state.seats, 'rowId'), (rowSeats) =>
       map(groupBy(rowSeats, 'sectionId'), (sectionSeats) =>
-        sectionSeats.map((seat) => ({
-          id: seat.id,
-          status: seatStatus(seat),
-        }))
+        sectionSeats.map((seat, i) => {
+          let status = seatStatus(seat);
+          if (status === 'AVAILABLE') {
+            const neighbours = compact([sectionSeats[i - 1], sectionSeats[i + 1]]);
+            const distancing = some(
+              neighbours,
+              (neighbour) => seatStatus(neighbour) === 'UNAVAILABLE'
+            );
+            if (distancing) {
+              status = 'DISTANCING';
+            }
+          }
+          return {
+            id: seat.id,
+            status,
+          };
+        })
       )
     );
   }),
