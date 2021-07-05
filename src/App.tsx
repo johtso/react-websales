@@ -1,11 +1,13 @@
 import ActionButton from 'components/ActionButton';
 import DigitInput from 'components/DigitInput';
 import { useLocalStore } from 'easy-peasy';
-import { map, random, sampleSize } from 'lodash-es';
-import { useEffect, useState } from 'react';
+import { compact, groupBy, map, random, sampleSize, some } from 'lodash-es';
+// import { useEffect, useState } from 'react';
 import makeSeatsStore from 'store';
+import seatPickerMachine from 'machines';
 import { sleep } from 'utils';
 import './App.css';
+import { useMachine } from '@xstate/react';
 import dummySeats from './dummyData';
 import './index.css';
 import './SeatPicker.css';
@@ -92,47 +94,80 @@ const fetchSeatData = () =>
     sleep(3000).then(() => resolve(unavailable));
   });
 
+const makeSeatPlan = (
+  basePlan: typeof seatingPlan,
+  seatStates: ('AVAILABLE' | 'SELECTED' | 'UNAVAILABLE' | 'DISTANCING')[]
+): types.SeatPlanType =>
+  map(groupBy(basePlan, 'rowId'), (rowSeats) =>
+    map(groupBy(rowSeats, 'sectionId'), (sectionSeats) =>
+      sectionSeats.map((seat, i) => {
+        let status = seatStates[seat.id];
+        if (status === 'AVAILABLE') {
+          const neighbours = compact([sectionSeats[i - 1], sectionSeats[i + 1]]);
+          const distancing = some(
+            neighbours,
+            (neighbour) => seatStates[neighbour.id] === 'UNAVAILABLE'
+          );
+          if (distancing) {
+            status = 'DISTANCING';
+          }
+        }
+        return {
+          id: seat.id,
+          status,
+        };
+      })
+    )
+  );
+
 const SeatSelection = (): JSX.Element => {
   const [state, actions] = useLocalStore(() => makeSeatsStore(seatingPlan));
+  const [current, send] = useMachine(seatPickerMachine, {
+    context: { seatCount: seatingPlan.length },
+    devTools: true,
+  });
 
-  const [loadingState, setLoadingState] = useState(true);
-  const [submittingState, setSubmittingState] = useState(false);
+  // useEffect(() => {
+  //   const continuouslyUpdateAvailability = () => {
+  //     actions.randomAvailabilityChange();
+  //     sleep(10000).then(() => continuouslyUpdateAvailability());
+  //   };
 
-  useEffect(() => {
-    const continuouslyUpdateAvailability = () => {
-      actions.randomAvailabilityChange();
-      sleep(10000).then(() => continuouslyUpdateAvailability());
-    };
+  //   fetchSeatData().then((value) => {
+  //     actions.setUnavailable({ unavailable: value });
+  //     setLoadingState(false);
+  //     sleep(10000).then(() => continuouslyUpdateAvailability());
+  //   });
+  // }, []);
 
-    fetchSeatData().then((value) => {
-      actions.setUnavailable({ unavailable: value });
-      setLoadingState(false);
-      sleep(10000).then(() => continuouslyUpdateAvailability());
-    });
-  }, []);
+  const seatStates = current.context.seats.map((s) => s.getSnapshot().value.toUpperCase());
 
+  const seatPlan = makeSeatPlan(seatingPlan, seatStates);
+  const submittingState = false;
   return (
     <div className="App">
       <header className="App-header">
         <span className="selected-seats">
           Selected Seats:
-          {state.selectedSeats.join(', ')}
+          {current.context.selections.join(', ')}
         </span>
         <SeatTypeSelector
           setTicketCount={actions.setTicketCount}
           ticketCounts={state.ticketTypes}
         />
         <SeatPicker
-          seatPlan={state.seatPlan}
-          handleSeatToggle={(seatId) => actions.toggleSelection({ seatId })}
-          loading={loadingState}
+          seatPlan={seatPlan}
+          // @ts-ignore
+          handleSeatToggle={(seatId) => current.context.seats[seatId].send('USER_TOGGLE')}
+          loading={current.matches('loading')}
         />
         <ActionButton
           type="submit"
           text={submittingState ? 'Reserving...' : 'Select Seats'}
-          handleClick={() => setSubmittingState(true)}
+          // handleClick={() => setSubmittingState(true)}
+          handleClick={() => {}}
           busy={submittingState}
-          disabled={!state.isSelectionValid}
+          disabled={!current.matches({ active: 'valid' })}
         />
       </header>
     </div>

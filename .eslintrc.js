@@ -66,6 +66,7 @@ module.exports = {
       },
     ],
     '@typescript-eslint/no-unused-vars': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+    '@typescript-eslint/ban-ts-comment': 'off',
     'no-param-reassign': [
       'error',
       { props: true, ignorePropertyModificationsFor: ['state', 'draft'] },
