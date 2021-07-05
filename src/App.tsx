@@ -1,13 +1,10 @@
+import { useInterpret, useSelector } from '@xstate/react';
 import ActionButton from 'components/ActionButton';
 import DigitInput from 'components/DigitInput';
-import { useLocalStore } from 'easy-peasy';
 import { compact, groupBy, map, random, sampleSize, some } from 'lodash-es';
-// import { useEffect, useState } from 'react';
-import makeSeatsStore from 'store';
 import seatPickerMachine from 'machines';
 import { sleep } from 'utils';
 import './App.css';
-import { useMachine } from '@xstate/react';
 import dummySeats from './dummyData';
 import './index.css';
 import './SeatPicker.css';
@@ -16,20 +13,22 @@ import * as types from './types';
 const seatingPlan = dummySeats;
 
 const SeatTypeSelector = ({
-  ticketCounts,
-  setTicketCount,
+  ticketSelection,
+  handleTicketSelection,
 }: {
-  ticketCounts: Record<types.TicketType, number>;
-  setTicketCount: (payload: { ticketType: types.TicketType; count: number }) => void;
-}) => (
+  ticketSelection: types.TicketSelection;
+  handleTicketSelection: (arg0: types.TicketSelection) => void;
+}): JSX.Element => (
   <div className="SeatTypeSelector">
-    {map(ticketCounts, (count, ticketType) => (
+    {map(ticketSelection, (count: number, ticketType) => (
       <div className="seat-type-row" key={ticketType}>
         <label htmlFor={ticketType}>{ticketType}</label>
         <DigitInput
           name={ticketType}
           count={count}
-          handleChange={(newCount) => setTicketCount({ ticketType, count: newCount })}
+          handleChange={(newCount) =>
+            handleTicketSelection({ ...ticketSelection, [ticketType]: newCount })
+          }
         />
       </div>
     ))}
@@ -121,26 +120,21 @@ const makeSeatPlan = (
   );
 
 const SeatSelection = (): JSX.Element => {
-  const [state, actions] = useLocalStore(() => makeSeatsStore(seatingPlan));
-  const [current, send] = useMachine(seatPickerMachine, {
+  const service = useInterpret(seatPickerMachine, {
     context: { seatCount: seatingPlan.length },
     devTools: true,
   });
+  // const [state, send, service] = useMachine(seatPickerMachine, {
+  //   context: { seatCount: seatingPlan.length },
+  //   devTools: true,
+  // });
+  const ticketSelection = useSelector(service, (s) => s.context.ticketSelection);
+  const seats = useSelector(service, (s) => s.context.seats);
+  const seatSelection = useSelector(service, (s) => s.context.seatSelection);
+  const isValid = useSelector(service, (s) => s.matches({ active: { validity: 'valid' } }));
+  const isLoading = useSelector(service, (s) => s.matches('loading'));
 
-  // useEffect(() => {
-  //   const continuouslyUpdateAvailability = () => {
-  //     actions.randomAvailabilityChange();
-  //     sleep(10000).then(() => continuouslyUpdateAvailability());
-  //   };
-
-  //   fetchSeatData().then((value) => {
-  //     actions.setUnavailable({ unavailable: value });
-  //     setLoadingState(false);
-  //     sleep(10000).then(() => continuouslyUpdateAvailability());
-  //   });
-  // }, []);
-
-  const seatStates = current.context.seats.map((s) => s.getSnapshot().value.toUpperCase());
+  const seatStates = seats.map((s) => s.getSnapshot().value.toUpperCase());
 
   const seatPlan = makeSeatPlan(seatingPlan, seatStates);
   const submittingState = false;
@@ -149,17 +143,19 @@ const SeatSelection = (): JSX.Element => {
       <header className="App-header">
         <span className="selected-seats">
           Selected Seats:
-          {current.context.selections.join(', ')}
+          {seatSelection.join(', ')}
         </span>
         <SeatTypeSelector
-          setTicketCount={actions.setTicketCount}
-          ticketCounts={state.ticketTypes}
+          handleTicketSelection={(newTicketSelection) =>
+            service.send({ type: 'SET_TICKETS', value: newTicketSelection })
+          }
+          ticketSelection={ticketSelection}
         />
         <SeatPicker
           seatPlan={seatPlan}
           // @ts-ignore
-          handleSeatToggle={(seatId) => current.context.seats[seatId].send('USER_TOGGLE')}
-          loading={current.matches('loading')}
+          handleSeatToggle={(seatId) => seats[seatId].send('USER_TOGGLE')}
+          loading={isLoading}
         />
         <ActionButton
           type="submit"
@@ -167,7 +163,7 @@ const SeatSelection = (): JSX.Element => {
           // handleClick={() => setSubmittingState(true)}
           handleClick={() => {}}
           busy={submittingState}
-          disabled={!current.matches({ active: 'valid' })}
+          disabled={!isValid}
         />
       </header>
     </div>

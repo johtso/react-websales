@@ -1,5 +1,6 @@
 import _ from 'lodash-es';
 import { actions, ActorRef, assign, send, sendParent, spawn, createMachine } from 'xstate';
+import * as types from 'types';
 
 const { pure } = actions;
 
@@ -15,7 +16,7 @@ type SeatEvent =
   | { type: 'AUTO_DESELECT'; value: null }
   | { type: 'USER_TOGGLE'; value: null };
 
-const seatMachine = createMachine<Record<string, never>, SeatEvent, SeatState>({
+const seatMachine = createMachine({
   id: 'seat',
   initial: 'unknown',
   states: {
@@ -29,7 +30,7 @@ const seatMachine = createMachine<Record<string, never>, SeatEvent, SeatState>({
       on: {
         USER_TOGGLE: {
           target: 'selected',
-          actions: [sendParent('SEAT.TOGGLED')],
+          actions: [sendParent('SEAT.USER_TOGGLE')],
         },
         SERVER_UNAVAILABLE: 'unavailable',
       },
@@ -38,11 +39,11 @@ const seatMachine = createMachine<Record<string, never>, SeatEvent, SeatState>({
       on: {
         USER_TOGGLE: {
           target: 'available',
-          actions: [sendParent('SEAT.TOGGLED')],
+          actions: [sendParent('SEAT.USER_TOGGLE')],
         },
         AUTO_DESELECT: {
           target: 'available',
-          actions: [sendParent('SEAT.TOGGLED')],
+          // actions: [sendParent('SEAT.USER_TOGGLE')],
         },
         SERVER_UNAVAILABLE: 'unavailable',
       },
@@ -55,11 +56,17 @@ const seatMachine = createMachine<Record<string, never>, SeatEvent, SeatState>({
   },
 });
 
+// type TicketType = 'STANDARD' | 'MEMBER';
+// type TicketSelection = Partial<Record<TicketType, number>>;
+
 // User must select exactly 2 seats.
 const selectionValid = (ctx: SeatPickerContext) => {
+  const selectedCount = _.sum(_.values(ctx.ticketSelection));
+  if (selectedCount === 0) {
+    return false;
+  }
   const count = ctx.seats.filter((s) => s.getSnapshot().matches('selected')).length;
-  const result = count === ctx.limit;
-  console.log({ count, result });
+  const result = count === selectedCount;
   return result;
 };
 
@@ -72,27 +79,65 @@ const updateArrayPreservingOrder = <T>(array: Readonly<T[]>, newArray: Readonly<
 };
 
 interface SeatPickerContext {
+  defaultTicket: types.DefaultTicketType;
+  ticketSelection: types.TicketSelection;
   seatCount: number;
   seats: ActorRef<typeof seatMachine>[];
-  limit: number;
-  selections: number[];
+  seatSelection: number[];
 }
 
-type SeatPickerState = {
-  value: 'idle' | 'loading' | { active: 'invalid' } | { active: 'valid' };
-  context: SeatPickerContext;
-};
+// interface ActiveState {
+//   validity: 'invalid' | 'valid';
+//   ticketsSelected: 'none' | 'some';
+// }
+
+// interface SeatPickerState {
+//   value: 'idle' | 'loading' | { active: ActiveState };
+//   context: SeatPickerContext;
+// }
 
 type SeatPickerEvent =
   | { type: 'FETCH'; value: null }
-  | { type: 'SET_LIMIT'; value: number }
-  | { type: 'SEAT.TOGGLED'; value: null };
+  | { type: 'SET_TICKETS'; value: types.TicketSelection }
+  | { type: 'SEAT.USER_TOGGLE'; value: null };
 
-const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent, SeatPickerState>(
+type SeatPickerState =
+  | {
+      value: 'loading';
+      context: SeatPickerContext & {
+        seatCount: 0;
+        limit: 0;
+        selections: [];
+      };
+    }
+  | {
+      value: 'active';
+      context: SeatPickerContext;
+    }
+  | {
+      value: { active: { ticketsSelected: 'none' } };
+      context: SeatPickerContext & { selections: [] };
+    };
+
+const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent>(
   {
     id: 'seat-picker',
     initial: 'loading',
-    context: { seatCount: 0, seats: [], limit: 2, selections: [] },
+    context: {
+      defaultTicket: 'STANDARD',
+      ticketSelection: {
+        STANDARD: 0,
+        MEMBER: 0,
+      },
+      // Total number of seats in the auditorium
+      // We spawn this number of seat machines.
+      seatCount: 0,
+      // Our seat machines (seat id = array index)
+      seats: [],
+      // Currently selected seats in order of selection.
+      // This is used to deselect seats in a FIFO manner when "limit" is reached.
+      seatSelection: [],
+    },
     states: {
       loading: {
         // @ts-ignore
@@ -110,7 +155,7 @@ const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent, Seat
               return event.data.map((s: 0 | 1, i: number) =>
                 send(
                   { type: s ? 'SERVER_AVAILABLE' : 'SERVER_UNAVAILABLE' },
-                  { to: (c: typeof context) => c.seats[i] }
+                  { to: (c: SeatPickerContext) => c.seats[i] }
                 )
               );
             }),
@@ -118,39 +163,72 @@ const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent, Seat
         },
       },
       active: {
-        initial: 'invalid',
+        type: 'parallel',
         on: {
-          SET_LIMIT: {
+          SET_TICKETS: {
             actions: [
               assign({
-                limit: (c, e) => {
-                  console.log(e);
-                  return e.value;
-                },
+                ticketSelection: (c, e) => e.value,
               }),
               'enforceSelectionLimit',
             ],
           },
-          'SEAT.TOGGLED': {
-            actions: ['updateSelections', 'enforceSelectionLimit'],
+          'SEAT.USER_TOGGLE': {
+            actions: ['updateSeatSelections', 'enforceSelectionLimit'],
           },
         },
         states: {
-          invalid: {
-            always: [
-              {
-                target: 'valid',
-                cond: 'selectionValid',
+          validity: {
+            initial: 'invalid',
+            states: {
+              invalid: {
+                always: [
+                  {
+                    target: 'valid',
+                    cond: 'selectionValid',
+                  },
+                ],
               },
-            ],
+              valid: {
+                always: [
+                  {
+                    target: 'invalid',
+                    cond: 'selectionInvalid',
+                  },
+                ],
+              },
+            },
           },
-          valid: {
-            always: [
-              {
-                target: 'invalid',
-                cond: 'selectionInvalid',
+          ticketsSelected: {
+            initial: 'none',
+            states: {
+              none: {
+                always: [
+                  {
+                    target: 'some',
+                    cond: (ctx) => _.sum(_.values(ctx.ticketSelection)) > 0,
+                  },
+                ],
+                on: {
+                  'SEAT.USER_TOGGLE': {
+                    // When user toggles a seat with no tickets selected, set default ticket quantity to 1.
+                    actions: [
+                      'selectOneDefaultTicket',
+                      'updateSeatSelections',
+                      'enforceSelectionLimit',
+                    ],
+                  },
+                },
               },
-            ],
+              some: {
+                always: [
+                  {
+                    target: 'none',
+                    cond: (ctx) => _.sum(_.values(ctx.ticketSelection)) === 0,
+                  },
+                ],
+              },
+            },
           },
         },
       },
@@ -162,29 +240,36 @@ const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent, Seat
       selectionInvalid: _.negate(selectionValid),
     },
     actions: {
-      log: (ctx) => [console.log('something happened'), console.log(ctx.selections)],
-      updateSelections: assign((ctx) => {
+      log: (ctx) => [console.log('something happened'), console.log(ctx.seatSelection)],
+      updateSeatSelections: assign((ctx) => {
         const currentlySelected: number[] = _.reduce(
           ctx.seats,
           // @ts-ignore
           (acc, seat, i): number[] => (seat.state.matches('selected') ? [...acc, i] : acc),
           []
         );
-        const newSelections = updateArrayPreservingOrder(ctx.selections, currentlySelected);
+        const newSelections = updateArrayPreservingOrder(ctx.seatSelection, currentlySelected);
 
         return {
-          selections: newSelections,
+          seatSelection: newSelections,
         };
       }),
-      enforceSelectionLimit: pure((context, event) => {
-        const selectionDiff = context.selections.length - context.limit;
+      enforceSelectionLimit: pure((ctx) => {
+        const selectionDiff = ctx.seatSelection.length - _.sum(_.values(ctx.ticketSelection));
         const excessSelections = selectionDiff < 0 ? 0 : selectionDiff;
-        return context.selections
+        console.log(ctx.seatSelection);
+        return ctx.seatSelection
           .slice(0, excessSelections)
           .map((seatId) =>
-            send({ type: 'AUTO_DESELECT' }, { to: (c: typeof context) => c.seats[seatId] })
+            send({ type: 'AUTO_DESELECT' }, { to: (c: typeof ctx) => c.seats[seatId] })
           );
       }),
+      selectOneDefaultTicket: assign((ctx) => ({
+        ticketSelection: {
+          ...ctx.ticketSelection,
+          [ctx.defaultTicket]: 1,
+        },
+      })),
     },
   }
 );
