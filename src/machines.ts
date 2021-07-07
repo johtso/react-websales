@@ -74,16 +74,6 @@ interface SeatPickerContext {
   seatSelection: number[];
 }
 
-// interface ActiveState {
-//   validity: 'invalid' | 'valid';
-//   ticketsSelected: 'none' | 'some';
-// }
-
-// interface SeatPickerState {
-//   value: 'idle' | 'loading' | { active: ActiveState };
-//   context: SeatPickerContext;
-// }
-
 type SeatPickerEvent =
   | { type: 'FETCH'; value: null }
   | { type: 'SET_TICKETS'; value: types.TicketSelection }
@@ -117,7 +107,9 @@ const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent>(
         invoke: {
           id: 'getSeats',
           src: (ctx) =>
-            sleep(5000).then(() => _.range(0, ctx.seatCount).map(() => _.sample([0, 1]))),
+            sleep(5000).then(() =>
+              _.range(0, ctx.seatCount).map(() => _.sample([0, 1, 1, 1, 1, 1]))
+            ),
           onDone: {
             target: 'active',
             actions: pure((context, event) => {
