@@ -1,20 +1,8 @@
 import _ from 'lodash-es';
-import { actions, ActorRef, assign, send, sendParent, spawn, createMachine } from 'xstate';
 import * as types from 'types';
+import { actions, ActorRef, assign, createMachine, send, sendParent, spawn } from 'xstate';
 
 const { pure } = actions;
-
-type SeatState = {
-  value: 'unknown' | 'available' | 'selected' | 'unavailable';
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  context: {};
-};
-
-type SeatEvent =
-  | { type: 'SERVER_UNAVAILABLE'; value: null }
-  | { type: 'SERVER_AVAILABLE'; value: null }
-  | { type: 'AUTO_DESELECT'; value: null }
-  | { type: 'USER_TOGGLE'; value: null };
 
 const seatMachine = createMachine({
   id: 'seat',
@@ -100,24 +88,6 @@ type SeatPickerEvent =
   | { type: 'FETCH'; value: null }
   | { type: 'SET_TICKETS'; value: types.TicketSelection }
   | { type: 'SEAT.USER_TOGGLE'; value: null };
-
-type SeatPickerState =
-  | {
-      value: 'loading';
-      context: SeatPickerContext & {
-        seatCount: 0;
-        limit: 0;
-        selections: [];
-      };
-    }
-  | {
-      value: 'active';
-      context: SeatPickerContext;
-    }
-  | {
-      value: { active: { ticketsSelected: 'none' } };
-      context: SeatPickerContext & { selections: [] };
-    };
 
 const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent>(
   {

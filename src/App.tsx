@@ -1,9 +1,8 @@
 import { useInterpret, useSelector } from '@xstate/react';
 import ActionButton from 'components/ActionButton';
 import DigitInput from 'components/DigitInput';
-import { compact, groupBy, map, random, sampleSize, some } from 'lodash-es';
+import { compact, groupBy, map, some } from 'lodash-es';
 import seatPickerMachine from 'machines';
-import { sleep } from 'utils';
 import './App.css';
 import dummySeats from './dummyData';
 import './index.css';
@@ -85,13 +84,6 @@ const SeatPicker = ({
     ) : null}
   </div>
 );
-
-const fetchSeatData = () =>
-  new Promise((resolve: (value: types.SeatType['id'][]) => void) => {
-    const seatIds = seatingPlan.map((s) => s.id);
-    const unavailable = sampleSize(seatIds, random(1, Math.round(seatIds.length / 2)));
-    sleep(3000).then(() => resolve(unavailable));
-  });
 
 const makeSeatPlan = (
   basePlan: typeof seatingPlan,
