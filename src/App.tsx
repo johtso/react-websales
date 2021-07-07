@@ -1,7 +1,7 @@
 import ActionButton from 'components/ActionButton';
 import DigitInput from 'components/DigitInput';
 import { useLocalStore } from 'easy-peasy';
-import { map, random, sampleSize } from 'lodash-es';
+import { map, sampleSize } from 'lodash-es';
 import { useEffect, useState } from 'react';
 import makeSeatsStore from 'store';
 import { sleep } from 'utils';
@@ -88,7 +88,7 @@ const SeatPicker = ({
 const fetchSeatData = () =>
   new Promise((resolve: (value: types.SeatType['id'][]) => void) => {
     const seatIds = seatingPlan.map((s) => s.id);
-    const unavailable = sampleSize(seatIds, random(1, Math.round(seatIds.length / 2)));
+    const unavailable = sampleSize(seatIds, Math.round(seatIds.length / 2));
     sleep(3000).then(() => resolve(unavailable));
   });
 
@@ -99,15 +99,9 @@ const SeatSelection = (): JSX.Element => {
   const [submittingState, setSubmittingState] = useState(false);
 
   useEffect(() => {
-    const continuouslyUpdateAvailability = () => {
-      actions.randomAvailabilityChange();
-      sleep(10000).then(() => continuouslyUpdateAvailability());
-    };
-
     fetchSeatData().then((value) => {
       actions.setUnavailable({ unavailable: value });
       setLoadingState(false);
-      sleep(10000).then(() => continuouslyUpdateAvailability());
     });
   }, []);
 
