@@ -1,234 +1,132 @@
 import _ from 'lodash-es';
-import { actions, ActorRef, assign, send, sendParent, spawn, createMachine } from 'xstate';
 import * as types from 'types';
+import { assignableProduce as produce, sleep } from 'utils';
+import { actions, assign, createMachine, DoneInvokeEvent, ExtractEvent, send } from 'xstate';
+import { choose } from 'xstate/lib/actions';
+import { createModel, ModelEventsFrom } from 'xstate/lib/model';
+import dummySeats from './dummyData';
 
 const { pure } = actions;
 
-type SeatState = {
-  value: 'unknown' | 'available' | 'selected' | 'unavailable';
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  context: {};
-};
+interface SeatPickerContext {
+  seatPlan?: types.SeatType[];
+  defaultTicket: types.DefaultTicketType;
+  ticketSelection: types.TicketSelection;
+  unavailableSeats: Set<types.SeatId>;
+  selectedSeats: Set<types.SeatId>;
+}
 
-type SeatEvent =
-  | { type: 'SERVER_UNAVAILABLE'; value: null }
-  | { type: 'SERVER_AVAILABLE'; value: null }
-  | { type: 'AUTO_DESELECT'; value: null }
-  | { type: 'USER_TOGGLE'; value: null };
+const seatPickerModel = createModel(
+  {
+    defaultTicket: 'STANDARD',
+    ticketSelection: {
+      STANDARD: 0,
+      MEMBER: 0,
+    },
+    unavailableSeats: new Set(),
+    selectedSeats: new Set(),
+  } as SeatPickerContext,
+  {
+    // Event creators
+    events: {
+      userUpdateTickets: (value: types.TicketSelection) => ({ value }),
+      userToggleSeat: (value: types.SeatId) => ({ value }),
+      seatWasSelected: (value: types.SeatId) => ({ value }),
+    },
+  }
+);
 
-const seatMachine = createMachine({
-  id: 'seat',
-  initial: 'unknown',
-  states: {
-    unknown: {
-      on: {
-        SERVER_UNAVAILABLE: 'unavailable',
-        SERVER_AVAILABLE: 'available',
-      },
-    },
-    available: {
-      on: {
-        USER_TOGGLE: {
-          target: 'selected',
-          actions: [sendParent('SEAT.USER_TOGGLE')],
-        },
-        SERVER_UNAVAILABLE: 'unavailable',
-      },
-    },
-    selected: {
-      on: {
-        USER_TOGGLE: {
-          target: 'available',
-          actions: [sendParent('SEAT.USER_TOGGLE')],
-        },
-        AUTO_DESELECT: {
-          target: 'available',
-          // actions: [sendParent('SEAT.USER_TOGGLE')],
-        },
-        SERVER_UNAVAILABLE: 'unavailable',
-      },
-    },
-    unavailable: {
-      on: {
-        SERVER_AVAILABLE: 'available',
-      },
-    },
-  },
-});
+type SeatPickerEvent = ModelEventsFrom<typeof seatPickerModel>;
 
-// type TicketType = 'STANDARD' | 'MEMBER';
-// type TicketSelection = Partial<Record<TicketType, number>>;
+// Response when fetching seat data
+type GetSeatsDataType = { seatPlan: types.SeatType[]; unavailableSeats: types.SeatId[] };
 
 // User must select exactly 2 seats.
 const selectionValid = (ctx: SeatPickerContext) => {
-  const selectedCount = _.sum(_.values(ctx.ticketSelection));
-  if (selectedCount === 0) {
+  const ticketCount = _.sum(_.values(ctx.ticketSelection));
+  if (ticketCount === 0) {
     return false;
   }
-  const count = ctx.seats.filter((s) => s.getSnapshot().matches('selected')).length;
-  const result = count === selectedCount;
-  return result;
+  return ticketCount === ctx.selectedSeats.size;
 };
 
-const sleep = (ms: number): Promise<() => unknown> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-const updateArrayPreservingOrder = <T>(array: Readonly<T[]>, newArray: Readonly<T[]>): T[] => {
-  const toAdd = _.difference(newArray, array);
-  return [..._.filter(array, (i) => newArray.includes(i)), ...toAdd];
-};
-
-interface SeatPickerContext {
-  defaultTicket: types.DefaultTicketType;
-  ticketSelection: types.TicketSelection;
-  seatCount: number;
-  seats: ActorRef<typeof seatMachine>[];
-  seatSelection: number[];
-}
-
-// interface ActiveState {
-//   validity: 'invalid' | 'valid';
-//   ticketsSelected: 'none' | 'some';
-// }
-
-// interface SeatPickerState {
-//   value: 'idle' | 'loading' | { active: ActiveState };
-//   context: SeatPickerContext;
-// }
-
-type SeatPickerEvent =
-  | { type: 'FETCH'; value: null }
-  | { type: 'SET_TICKETS'; value: types.TicketSelection }
-  | { type: 'SEAT.USER_TOGGLE'; value: null };
-
-type SeatPickerState =
-  | {
-      value: 'loading';
-      context: SeatPickerContext & {
-        seatCount: 0;
-        limit: 0;
-        selections: [];
-      };
-    }
-  | {
-      value: 'active';
-      context: SeatPickerContext;
-    }
-  | {
-      value: { active: { ticketsSelected: 'none' } };
-      context: SeatPickerContext & { selections: [] };
-    };
-
-const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent>(
+const seatPickerMachine = createMachine<typeof seatPickerModel>(
   {
     id: 'seat-picker',
     initial: 'loading',
-    context: {
-      defaultTicket: 'STANDARD',
-      ticketSelection: {
-        STANDARD: 0,
-        MEMBER: 0,
-      },
-      // Total number of seats in the auditorium
-      // We spawn this number of seat machines.
-      seatCount: 0,
-      // Our seat machines (seat id = array index)
-      seats: [],
-      // Currently selected seats in order of selection.
-      // This is used to deselect seats in a FIFO manner when "limit" is reached.
-      seatSelection: [],
-    },
+    context: seatPickerModel.initialContext,
     states: {
       loading: {
-        // @ts-ignore
-        entry: assign((ctx) => ({
-          seats: _.range(0, ctx.seatCount).map((i) => spawn(seatMachine, `seat-${i}`)),
-        })),
         invoke: {
           id: 'getSeats',
-          src: (ctx) =>
-            sleep(5000).then(() => _.range(0, ctx.seatCount).map(() => _.sample([0, 1]))),
+          src: () =>
+            sleep(5000).then(
+              () =>
+                ({
+                  seatPlan: dummySeats,
+                  unavailableSeats: _.sampleSize(
+                    _.range(0, dummySeats.length),
+                    dummySeats.length / 4
+                  ),
+                } as GetSeatsDataType)
+            ),
           onDone: {
             target: 'active',
-            actions: pure((context, event) => {
-              console.log(event.data);
-              return event.data.map((s: 0 | 1, i: number) =>
-                send(
-                  { type: s ? 'SERVER_AVAILABLE' : 'SERVER_UNAVAILABLE' },
-                  { to: (c: SeatPickerContext) => c.seats[i] }
-                )
-              );
-            }),
+            actions: assign(
+              produce((draft, event: DoneInvokeEvent<GetSeatsDataType>) => {
+                draft.seatPlan = event.data.seatPlan;
+                draft.unavailableSeats = new Set(event.data.unavailableSeats);
+              })
+            ),
           },
         },
       },
       active: {
-        type: 'parallel',
+        initial: 'invalid',
         on: {
-          SET_TICKETS: {
+          userUpdateTickets: {
             actions: [
-              assign({
-                ticketSelection: (c, e) => e.value,
-              }),
+              assign(
+                produce((draft, event: ExtractEvent<SeatPickerEvent, 'userUpdateTickets'>) => {
+                  draft.ticketSelection = event.value;
+                })
+              ),
               'enforceSelectionLimit',
             ],
           },
-          'SEAT.USER_TOGGLE': {
-            actions: ['updateSeatSelections', 'enforceSelectionLimit'],
+          userToggleSeat: {
+            actions: 'toggleSeat',
+          },
+          seatWasSelected: {
+            actions: [
+              choose([
+                {
+                  cond: 'noTicketsSelected',
+                  actions: 'selectOneDefaultTicket',
+                },
+                {
+                  actions: 'enforceSelectionLimit',
+                },
+              ]),
+            ],
           },
         },
         states: {
-          validity: {
-            initial: 'invalid',
-            states: {
-              invalid: {
-                always: [
-                  {
-                    target: 'valid',
-                    cond: 'selectionValid',
-                  },
-                ],
+          invalid: {
+            always: [
+              {
+                target: 'valid',
+                cond: 'selectionValid',
               },
-              valid: {
-                always: [
-                  {
-                    target: 'invalid',
-                    cond: 'selectionInvalid',
-                  },
-                ],
-              },
-            },
+            ],
           },
-          ticketsSelected: {
-            initial: 'none',
-            states: {
-              none: {
-                always: [
-                  {
-                    target: 'some',
-                    cond: (ctx) => _.sum(_.values(ctx.ticketSelection)) > 0,
-                  },
-                ],
-                on: {
-                  'SEAT.USER_TOGGLE': {
-                    // When user toggles a seat with no tickets selected, set default ticket quantity to 1.
-                    actions: [
-                      'selectOneDefaultTicket',
-                      'updateSeatSelections',
-                      'enforceSelectionLimit',
-                    ],
-                  },
-                },
+          valid: {
+            always: [
+              {
+                target: 'invalid',
+                cond: 'selectionInvalid',
               },
-              some: {
-                always: [
-                  {
-                    target: 'none',
-                    cond: (ctx) => _.sum(_.values(ctx.ticketSelection)) === 0,
-                  },
-                ],
-              },
-            },
+            ],
           },
         },
       },
@@ -238,40 +136,51 @@ const seatPickerMachine = createMachine<SeatPickerContext, SeatPickerEvent>(
     guards: {
       selectionValid,
       selectionInvalid: _.negate(selectionValid),
+      noTicketsSelected: (ctx) => _.sum(_.values(ctx.ticketSelection)) === 0,
     },
     actions: {
-      log: (ctx) => [console.log('something happened'), console.log(ctx.seatSelection)],
-      updateSeatSelections: assign((ctx) => {
-        const currentlySelected: number[] = _.reduce(
-          ctx.seats,
-          // @ts-ignore
-          (acc, seat, i): number[] => (seat.state.matches('selected') ? [...acc, i] : acc),
-          []
-        );
-        const newSelections = updateArrayPreservingOrder(ctx.seatSelection, currentlySelected);
+      toggleSeat: pure((ctx, event) => {
+        const toggledSeatId = event.value as types.SeatId;
+        if (ctx.unavailableSeats.has(toggledSeatId)) {
+          return [];
+        }
 
-        return {
-          seatSelection: newSelections,
-        };
+        if (ctx.selectedSeats.has(toggledSeatId)) {
+          return [
+            assign(
+              produce((draft: typeof ctx) => {
+                draft.selectedSeats.delete(toggledSeatId);
+              })
+            ),
+          ];
+        }
+        return [
+          assign(
+            produce((draft: typeof ctx) => {
+              draft.selectedSeats.add(toggledSeatId);
+            })
+          ),
+          send(seatPickerModel.events.seatWasSelected(toggledSeatId)),
+        ];
       }),
-      enforceSelectionLimit: pure((ctx) => {
-        const selectionDiff = ctx.seatSelection.length - _.sum(_.values(ctx.ticketSelection));
-        const excessSelections = selectionDiff < 0 ? 0 : selectionDiff;
-        console.log(ctx.seatSelection);
-        return ctx.seatSelection
-          .slice(0, excessSelections)
-          .map((seatId) =>
-            send({ type: 'AUTO_DESELECT' }, { to: (c: typeof ctx) => c.seats[seatId] })
-          );
-      }),
-      selectOneDefaultTicket: assign((ctx) => ({
-        ticketSelection: {
-          ...ctx.ticketSelection,
-          [ctx.defaultTicket]: 1,
-        },
-      })),
+      enforceSelectionLimit: assign(
+        produce((draft) => {
+          const totalTickets = _.sum(_.values(draft.ticketSelection));
+          const selectionDiff = draft.selectedSeats.size - totalTickets;
+          const excessSelections = selectionDiff < 0 ? 0 : selectionDiff;
+
+          if (excessSelections) {
+            draft.selectedSeats = new Set(Array.from(draft.selectedSeats).slice(excessSelections));
+          }
+        })
+      ),
+      selectOneDefaultTicket: assign(
+        produce((draft) => {
+          draft.ticketSelection[draft.defaultTicket] = 1;
+        })
+      ),
     },
   }
 );
 
-export default seatPickerMachine;
+export { seatPickerMachine, seatPickerModel };

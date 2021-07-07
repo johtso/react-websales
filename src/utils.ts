@@ -1,3 +1,4 @@
+import { Draft, produce } from 'immer';
 import { reduce } from 'iter-tools';
 import { pull } from 'lodash-es';
 
@@ -50,4 +51,9 @@ const toggleSetValue = <T>(set: Set<T>, value: T): void => {
 const sleep = (ms: number): Promise<() => unknown> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-export { groupedMap, pushOrPull, sleep, sum, difference, toggleSetValue };
+const assignableProduce =
+  <TContext, TEvent>(recipe: (draft: Draft<TContext>, event: TEvent) => void) =>
+  (context: TContext, event: TEvent): Partial<TContext> =>
+    produce(context, (draft) => recipe(draft, event));
+
+export { groupedMap, pushOrPull, sleep, sum, difference, toggleSetValue, assignableProduce };

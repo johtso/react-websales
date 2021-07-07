@@ -1,10 +1,13 @@
 import { inspect } from '@xstate/inspect';
 import 'easy-peasy/map-set-support';
+import { enableMapSet } from 'immer';
 import { StrictMode } from 'react';
 import { debugContextDevtool } from 'react-context-devtool';
 import ReactDOM from 'react-dom';
 import App from './App';
 import './index.css';
+
+enableMapSet();
 
 inspect({
   url: 'https://statecharts.io/inspect',

@@ -2201,6 +2201,11 @@
   resolved "https://registry.yarnpkg.com/@webpack-cli/serve/-/serve-1.5.1.tgz#b5fde2f0f79c1e120307c415a4c1d5eb15a6f278"
   integrity sha512-4vSVUiOPJLmr45S8rMGy7WDvpWxfFxfP/Qx/cxZFCfvoypTYpPPL1X8VIZMe0WTA+Jr7blUxwUSEZNkjoMTgSw==
 
+"@xstate/immer@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@xstate/immer/-/immer-0.2.0.tgz#4f128947c3cbb3e68357b886485a36852d4e06b3"
+  integrity sha512-ZKwAwS84kfmN108lEtVHw8jztKDiFeaQsTxkOlOghpK1Lr7+13G8HhZZXyN1/pVkplloUUOPMH5EXVtitZDr8w==
+
 "@xstate/inspect@^0.4.1":
   version "0.4.1"
   resolved "https://registry.yarnpkg.com/@xstate/inspect/-/inspect-0.4.1.tgz#6b00b945c03280a333de8ddf10e91830c361052d"

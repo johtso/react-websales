@@ -13,4 +13,5 @@ export type SeatType = {
   rowLabel: string;
   columnLabel: string;
 };
+export type SeatId = SeatType['id'];
 export type SeatPlanType = { id: SeatType['id']; status: SeatStatus }[][][];

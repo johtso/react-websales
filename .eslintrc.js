@@ -69,8 +69,9 @@ module.exports = {
     '@typescript-eslint/ban-ts-comment': 'off',
     'no-param-reassign': [
       'error',
-      { props: true, ignorePropertyModificationsFor: ['state', 'draft'] },
+      { props: false }, // ignorePropertyModificationsFor: ['state', 'draft'] },
     ],
+    // 'no-return-assign': ['error', 'except-parens'],
     'no-console': 'off',
   },
 };
