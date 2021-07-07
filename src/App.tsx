@@ -116,10 +116,7 @@ const SeatSelection = (): JSX.Element => {
     context: { seatCount: seatingPlan.length },
     devTools: true,
   });
-  // const [state, send, service] = useMachine(seatPickerMachine, {
-  //   context: { seatCount: seatingPlan.length },
-  //   devTools: true,
-  // });
+
   const ticketSelection = useSelector(service, (s) => s.context.ticketSelection);
   const seats = useSelector(service, (s) => s.context.seats);
   const seatSelection = useSelector(service, (s) => s.context.seatSelection);
